@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高齢者向け 音読・童謡練習アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Zen Maru Gothic', sans-serif;
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body class="bg-amber-50 text-slate-900 min-h-screen flex flex-col justify-between">
+
+    <header class="bg-emerald-700 text-white shadow-md py-4 px-6 text-center">
+        <h1 class="text-3xl md:text-4xl font-bold tracking-wide">声に出して楽しむ 歌と音読の部屋</h1>
+        <p class="text-lg mt-1 text-emerald-100">画面を見て、ゆったり声に出してみましょう</p>
+    </header>
+
+    <main class="flex-grow container mx-auto px-4 py-6 max-w-4xl flex flex-col items-center">
+
+        <!-- Local Server Warning Banner -->
+        <div id="notice-banner" class="w-full bg-blue-100 border-l-4 border-blue-500 text-blue-900 p-4 rounded-lg mb-6 shadow-sm hidden">
+            <p class="font-bold text-lg">💡 ローカル環境での実行に関するお知らせ</p>
+            <p class="text-base mt-1">
+                ブラウザのセキュリティ制限（CORS）のため、ファイルを直接開く（<code>file://</code>）とテキストが読めない場合があります。<br>
+                うまく動かない場合は、簡易ローカルサーバー（VS CodeのLive Server等）でお試しください。ダミー音源での動作フォールバックも組み込んでいます。
+            </p>
+        </div>
+
+        <!-- Status / Title Display -->
+        <div class="w-full text-center mb-4">
+            <span id="file-status-badge" class="inline-block bg-emerald-200 text-emerald-900 font-bold px-4 py-1.5 rounded-full text-lg shadow-sm">
+                練習ファイルを読み込んでいます...
+            </span>
+        </div>
+
+        <!-- Large YouTube Player Container -->
+        <div class="w-full bg-white rounded-2xl shadow-xl overflow-hidden border-4 border-emerald-600 mb-6 relative aspect-video flex items-center justify-center bg-black">
+            <div id="youtube-player" class="w-full h-full absolute inset-0"></div>
+            <!-- Fallback message if video fails to load -->
+            <div id="fallback-message" class="absolute inset-0 flex flex-col items-center justify-center bg-amber-50 text-amber-900 p-6 text-center hidden">
+                <p class="text-2xl font-bold mb-2">動画の読み込みに失敗しました</p>
+                <p class="text-lg">「次の練習へ」ボタンを押して別の曲をお試しください。</p>
+            </div>
+        </div>
+
+        <div class="w-full bg-white rounded-2xl shadow-md p-6 border-2 border-emerald-200 flex flex-col md:flex-row items-center justify-between gap-6">
+            
+            <!-- Volume Control Slider -->
+            <div class="w-full md:w-1/2 flex items-center gap-4 bg-amber-50 p-4 rounded-xl border border-amber-200">
+                <span class="text-2xl" role="img" aria-label="音量">🔊</span>
+                <div class="flex-grow">
+                    <label for="volume-slider" class="block text-lg font-bold text-slate-800 mb-1">
+                        音量調整: <span id="volume-val" class="text-emerald-700">80</span>%
+                    </label>
+                    <input id="volume-slider" type="range" min="0" max="100" value="80" 
+                           class="w-full h-4 bg-amber-200 rounded-lg appearance-none cursor-pointer accent-emerald-600">
+                </div>
+            </div>
+
+            <!-- Next Practice Button (Extra Large for Seniors) -->
+            <button id="next-btn" class="w-full md:w-auto flex-grow bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-2xl font-bold py-5 px-8 rounded-2xl shadow-lg transform transition active:scale-95 flex items-center justify-center gap-3 cursor-pointer">
+                <span>🎵 次の練習へ (ランダム)</span>
+            </button>
+        </div>
+
+        <div class="w-full mt-8 bg-white rounded-2xl shadow-md p-6 border-2 border-emerald-200">
+            <h2 class="text-2xl font-bold text-emerald-800 mb-3 flex items-center gap-2">
+                <span>📖</span> 使い方と練習のコツ
+            </h2>
+            <ul class="list-disc list-inside space-y-2 text-xl text-slate-700 leading-relaxed">
+                <li>「次の練習へ」ボタンを押すと、01〜49の中からランダムに別の動画が選ばれます。</li>
+                <li>音が大きすぎたり小さすぎた場合は、上の「音量調整」スライドバーで自由に変更できます。</li>
+                <li>画面に流れる歌や音楽に合わせて、歌詞を大きくハッキリ声に出して読みましょう。</li>
+            </ul>
+        </div>
+
+    </main>
+
+    <footer class="bg-slate-800 text-white text-center py-4 text-base mt-8">
+        <p>高齢者向け音読・歌の練習サポートシステム</p>
+    </footer>
+
+    <script>
+        // YouTube IFrame API Script Loader
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        let player;
+        let apiReady = false;
+
+        // Default fallback YouTube IDs (Classic Japanese Children's Songs / Douyou)
+        const fallbackVideoIds = [
+            "1XgP2E7Z39Y", // Furusato
+            "5k2v0vX_2pA", // Haru ga Kita
+            "9bZkp7q19f0", // Akatonbo
+            "8cK6J8Vz3kE", // Momotaro
+            "3k5_Xg7qZ9M"  // Umi
+        ];
+
+        // This function is called automatically by the YouTube API
+        function onYouTubeIframeAPIReady() {
+            apiReady = true;
+            initPlayer(fallbackVideoIds[0]);
+        }
+
+        function initPlayer(videoId) {
+            if (!player) {
+                player = new YT.Player('youtube-player', {
+                    height: '100%',
+                    width: '100%',
+                    videoId: videoId,
+                    playerVars: {
+                        'playsinline': 1,
+                        'rel': 0,
+                        'autoplay': 0
+                    },
+                    events: {
+                        'onReady': onPlayerReady,
+                        'onError': onPlayerError
+                    }
+                });
+            } else {
+                if (player && typeof player.loadVideoById === 'function') {
+                    player.loadVideoById(videoId);
+                }
+            }
+        }
+
+        function onPlayerReady(event) {
+            // Set initial volume from slider
+            const slider = document.getElementById('volume-slider');
+            player.setVolume(slider.value);
+            // Auto play on load/change for senior convenience
+            event.target.playVideo();
+        }
+
+        function onPlayerError(event) {
+            console.warn("YouTube player error encountered, switching to backup sample video.");
+            document.getElementById('fallback-message').classList.remove('hidden');
+        }
+
+        // Extract YouTube Video ID from various URL formats
+        function extractYouTubeId(urlOrText) {
+            if (!urlOrText) return null;
+            const text = urlOrText.trim();
+            
+            // Standard regex for youtube watch URLs, youtu.be, embed, shorts
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = text.match(regExp);
+
+            if (match && match[2].length === 11) {
+                return match[2];
+            }
+            // If the text itself is already an 11-character video ID
+            if (text.length === 11 && /^[a-zA-Z0-9_-]+$/.test(text)) {
+                return text;
+            }
+            return null;
+        }
+
+        // Fetch and load random text file from 'y-file/XX.txt' (01 to 49)
+        async function loadRandomFile() {
+            // Detect if running on file:// protocol to show notice banner
+            if (window.location.protocol === 'file:') {
+                document.getElementById('notice-banner').classList.remove('hidden');
+            }
+
+            // Pick a random number between 1 and 49
+            const randomNum = Math.floor(Math.random() * 49) + 1;
+            const fileNumberStr = String(randomNum).padStart(2, '0');
+            const filePath = `y-file/${fileNumberStr}.txt`;
+
+            document.getElementById('file-status-badge').textContent = `ファイルを読み込み中... (${fileNumberStr}.txt)`;
+            document.getElementById('fallback-message').classList.add('hidden');
+
+            try {
+                const response = await fetch(filePath);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const textContent = await response.text();
+                const videoId = extractYouTubeId(textContent);
+
+                if (videoId) {
+                    document.getElementById('file-status-badge').textContent = `練習ファイル: ${fileNumberStr}.txt`;
+                    if (apiReady && player && typeof player.loadVideoById === 'function') {
+                        player.loadVideoById(videoId);
+                    } else {
+                        // If API is not ready yet, initialize with this ID once ready
+                        setTimeout(() => initPlayer(videoId), 1000);
+                    }
+                } else {
+                    throw new Error("Valid YouTube URL not found in file.");
+                }
+            } catch (error) {
+                console.warn(`Could not load ${filePath} (Expected if running locally without server or file missing). Using backup fallback video.`, error);
+                
+                // Fallback to embedded backup list
+                const fallbackId = fallbackVideoIds[Math.floor(Math.random() * fallbackVideoIds.length)];
+                document.getElementById('file-status-badge').textContent = `練習ファイル: ${fileNumberStr}.txt (※予備動画で再生)`;
+                
+                if (apiReady && player && typeof player.loadVideoById === 'function') {
+                    player.loadVideoById(fallbackId);
+                } else {
+                    setTimeout(() => initPlayer(fallbackId), 1000);
+                }
+            }
+        }
+
+        // Event Listeners setup
+        window.addEventListener('DOMContentLoaded', () => {
+            // Next practice button click
+            document.getElementById('next-btn').addEventListener('click', () => {
+                loadRandomFile();
+            });
+
+            // Volume slider change
+            const volumeSlider = document.getElementById('volume-slider');
+            const volumeVal = document.getElementById('volume-val');
+
+            volumeSlider.addEventListener('input', (e) => {
+                const vol = e.target.value;
+                volumeVal.textContent = vol;
+                if (player && typeof player.setVolume === 'function') {
+                    player.setVolume(vol);
+                }
+            });
+
+            // If API takes a bit to load, initialize backup or first load attempt after a short delay
+            setTimeout(() => {
+                loadRandomFile();
+            }, 600);
+        });
+    </script>
+</body>
+</html>
