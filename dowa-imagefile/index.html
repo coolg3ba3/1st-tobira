@@ -1,177 +1,315 @@
-<!-- ※参考サイト「昔話～の王国」
-  https://www.douwa-douyou.jp/contents/html/douwastory/douwastory1_25.shtml
- -->  
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>童話音読トレーニング（高齢者向け）</title>
-    <!-- Tailwind CSS for high contrast and responsive design -->
+    <title>高齢者向け 音読練習アプリ</title>
+    <!-- Tailwind CSS for modern responsive layout and senior-friendly styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for clear UI icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Custom scrollbars and high contrast touch enhancements */
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            touch-action: manipulation;
+        /* Custom styling for smooth zooming and panning container */
+        .zoom-container {
+            touch-action: none;
+            cursor: grab;
+        }
+        .zoom-container:active {
+            cursor: grabbing;
+        }
+        /* Custom scrollbar for better touch targets */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 6px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
     </style>
 </head>
-<body class="bg-amber-50 text-slate-900 min-h-screen flex flex-col justify-between select-none">
+<body class="bg-amber-50 text-slate-800 font-sans min-h-screen flex flex-col justify-between selection:bg-amber-200">
 
-    <header class="bg-emerald-700 text-white shadow-md py-4 px-6 text-center">
-        <h1 class="text-3xl md:text-4xl font-bold tracking-wide">声に出して読もう！ たのしい童話</h1>
-        <p class="text-emerald-100 text-lg mt-1">ゆっくり、大きく声に出して読んでみましょう</p>
+    <header class="bg-amber-600 text-white shadow-md py-4 px-6 flex flex-wrap justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <div class="bg-white text-amber-600 p-2.5 rounded-full shadow-inner text-2xl">
+                <i class="fa-solid fa-book-open-reader"></i>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-wide">声に出して読もう・童話の時間</h1>
+        </div>
+        <div class="mt-2 sm:mt-0 bg-amber-700/60 px-4 py-2 rounded-xl text-lg font-medium flex items-center space-x-2">
+            <i class="fa-solid fa-bookmark text-amber-200"></i>
+            <span id="progress-indicator">読み込み中...</span>
+        </div>
     </header>
 
-    <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 flex flex-col items-center justify-center">
-        
-        <!-- Image Card Container -->
-        <div class="bg-white border-4 border-emerald-600 rounded-2xl shadow-xl w-full max-h-[70vh] flex flex-col items-center justify-center p-4 relative overflow-hidden mb-6">
-            
-            <!-- Loading Spinner / Status Indicator -->
-            <div id="loadingIndicator" class="absolute inset-0 bg-white/90 flex flex-col items-center justify-center z-10 text-emerald-800 text-2xl font-bold">
-                <svg class="animate-spin h-16 w-16 text-emerald-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                画像を読み込んでいます...
+    <main class="flex-grow flex flex-col p-4 sm:p-6 max-w-6xl mx-auto w-full">
+        <!-- Control Toolbar for Zoom and Reset -->
+        <div class="bg-white rounded-2xl shadow-sm border border-amber-200 p-3 mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center space-x-2">
+                <span class="text-base font-bold text-slate-700 ml-1">
+                    <i class="fa-solid fa-magnifying-glass text-amber-600 mr-1"></i> 表示調整:
+                </span>
+            </div>
+            <div class="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto justify-end">
+                <button id="zoom-out-btn" class="flex-1 sm:flex-none bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-3 rounded-xl border border-slate-300 shadow-sm transition active:scale-95 text-lg flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-minus"></i>
+                    <span>縮小</span>
+                </button>
+                <button id="zoom-reset-btn" class="flex-1 sm:flex-none bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-5 py-3 rounded-xl border border-amber-300 shadow-sm transition active:scale-95 text-lg flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>もどす</span>
+                </button>
+                <button id="zoom-in-btn" class="flex-1 sm:flex-none bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-3 rounded-xl border border-slate-300 shadow-sm transition active:scale-95 text-lg flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>拡大</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Image Viewer Box -->
+        <div id="viewer-container" class="zoom-container relative bg-white rounded-2xl shadow-md border-2 border-amber-200 overflow-hidden flex-grow flex items-center justify-center min-h-[420px] sm:min-h-[520px]">
+            <!-- Loading State / Spinner -->
+            <div id="loading-spinner" class="absolute inset-0 flex flex-col items-center justify-center bg-amber-50/80 z-20">
+                <div class="animate-spin rounded-full h-16 w-16 border-4 border-amber-600 border-t-transparent mb-3"></div>
+                <p class="text-lg font-bold text-amber-800">童話を読み込んでいます...</p>
             </div>
 
-            <!-- Error Message Overlay -->
-            <div id="errorMessage" class="hidden absolute inset-0 bg-red-50 flex flex-col items-center justify-center z-20 text-center p-6">
-                <div class="text-red-600 text-5xl mb-3">⚠️</div>
-                <h3 class="text-2xl font-bold text-red-700 mb-2">画像の読み込みに失敗しました</h3>
-                <p class="text-slate-700 text-lg mb-6 max-w-md" id="errorText">
-                    「ping-file」フォルダ内に指定の画像ファイルが存在するか確認してください。
+            <!-- Error State Box -->
+            <div id="error-box" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-white p-6 text-center z-20">
+                <div class="text-red-500 text-5xl mb-3">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2">画像を読み込めませんでした</h3>
+                <p class="text-slate-600 max-w-md mb-4 text-base" id="error-message">
+                    指定されたフォルダ（./ping-file/）に画像ファイルが見つかりません。
                 </p>
-                <button onclick="retryImage()" class="bg-red-600 hover:bg-red-700 text-white font-bold text-2xl px-8 py-4 rounded-xl shadow-lg transition transform active:scale-95">
-                    もう一度読み込む (再表示)
+                <button id="retry-btn" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-6 py-3 rounded-xl shadow transition text-lg">
+                    もう一度試す
                 </button>
             </div>
 
-            <!-- Story Image Element -->
-            <img id="storyImage" 
-                 class="max-h-[60vh] w-auto object-contain rounded-lg shadow-inner cursor-pointer" 
-                 alt="童話の文章画像"
-                 onload="handleImageLoad()"
-                 onerror="handleImageError()">
+            <!-- Zoomable Image Wrapper -->
+            <div id="transform-wrapper" class="transition-transform duration-75 origin-center w-full h-full flex items-center justify-center">
+                <img id="fairy-tale-img" src="" alt="童話の全文画像" class="max-w-full max-h-[70vh] object-contain select-none shadow-sm rounded" draggable="false" />
+            </div>
+
+            <!-- Guidance Overlay hint for seniors -->
+            <div class="absolute bottom-3 left-3 bg-slate-900/70 text-white text-xs sm:text-sm px-3 py-1.5 rounded-lg pointer-events-none z-10 backdrop-blur-sm">
+                <i class="fa-solid fa-hand text-amber-300 mr-1"></i> 画像をマウスや指で動かしたり、上のボタンで大きくして読めます
+            </div>
         </div>
-
-        <div class="flex flex-wrap gap-4 justify-center w-full max-w-3xl">
-            <!-- Retry Button -->
-            <button onclick="retryImage()" 
-                    class="flex-1 min-w-[200px] bg-amber-500 hover:bg-amber-600 text-white font-bold text-2xl py-5 px-6 rounded-2xl shadow-lg border-2 border-amber-600 flex items-center justify-center gap-3 transition transform active:scale-95">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                再表示
-            </button>
-
-            <!-- Next Story Button -->
-            <button onclick="loadRandomStory()" 
-                    class="flex-1 min-w-[220px] bg-blue-600 hover:bg-blue-700 text-white font-bold text-2xl py-5 px-6 rounded-2xl shadow-lg border-2 border-blue-700 flex items-center justify-center gap-3 transition transform active:scale-95">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                </svg>
-                次の練習へ
-            </button>
-        </div>
-
     </main>
 
-    <footer class="bg-slate-200 text-slate-700 py-6 px-4 mt-8 border-t border-slate-300">
-        <div class="max-w-4xl mx-auto text-sm leading-relaxed">
-            <h2 class="text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
-                <span>💡</span> パソコン起動時に自動でこの画面を開く設定方法（ご家族・管理者向け）
-            </h2>
-            <div class="grid md:grid-cols-2 gap-4 bg-white p-4 rounded-xl shadow-sm">
-                <div>
-                    <h3 class="font-bold text-slate-800 mb-1">【Windowsの場合】</h3>
-                    <ol class="list-decimal list-inside space-y-1 text-xs">
-                        <li>このHTMLファイルをダブルクリックしてブラウザで開きます。</li>
-                        <li>キーボードの <kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300 font-mono">Windowsキー + R</kbd> を押します。</li>
-                        <li>「<code class="text-blue-600 font-mono">shell:startup</code>」と入力してEnterを押します。</li>
-                        <li>開いた「スタートアップ」フォルダの中に、このHTMLファイルの<strong>「ショートカット」</strong>を置きます。</li>
-                        <li>ブラウザの設定で、このページを「起動時に開くタブ」に登録しておくと確実です。</li>
-                    </ol>
-                </div>
-                <div>
-                    <h3 class="font-bold text-slate-800 mb-1">【フォルダ構成のご注意】</h3>
-                    <p class="text-xs mb-2">
-                        HTMLファイルと同じ階層に「<strong>story</strong>」という名前のフォルダを作成し、その中に画像ファイル（<strong>02.png</strong> から <strong>29.png</strong>）を保存してください。
-                    </p>
-                    <p class="text-xs font-semibold text-emerald-700">
-                        ※ ファイル名の番号は半角の2桁（02.png, 03.png ... 29.png）にしてください。
-                    </p>
-                </div>
+    <footer class="bg-white border-t border-amber-200 py-4 px-6 shadow-lg">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="text-sm sm:text-base text-slate-600 text-center sm:text-left">
+                <i class="fa-solid fa-circle-info text-amber-600 mr-1"></i> 文字が小さいときは「＋拡大」ボタンを押してください。
+            </div>
+            <div>
+                <button id="next-btn" class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 active:scale-95 text-white text-xl font-bold px-8 py-4 rounded-2xl shadow-lg border-2 border-amber-500 flex items-center justify-center space-x-3 transition transform">
+                    <span>次の童話へ進む</span>
+                    <i class="fa-solid fa-arrow-right text-amber-200"></i>
+                </button>
             </div>
         </div>
     </footer>
 
     <script>
-        // 設定: 02.pngから29.pngまでの範囲を定義
-        const MIN_FILE_NUM = 2;
-        const MAX_FILE_NUM = 29;
-        
-        let currentFilename = '';
+        // Configuration
+        const minIndex = 10;
+        const maxIndex = 23;
+        const folderPath = './ping-file/';
 
-        // 2桁のゼロ埋め文字列を作成するヘルパー関数 (例: 2 -> "02")
-        function padZero(num) {
-            return String(num).padStart(2, '0');
-        }
+        // State management
+        let imageQueue = [];
+        let currentIndexInQueue = -1;
+        let currentImageNumber = null;
 
-        // ランダムな画像を「story」フォルダから選択して表示する関数
-        function loadRandomStory() {
-            // ローディング表示をON
-            document.getElementById('loadingIndicator').classList.remove('hidden');
-            document.getElementById('errorMessage').classList.add('hidden');
+        // Zoom & Pan state variables
+        let scale = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
 
-            // 2〜29の間でランダムな整数を生成
-            const randomNum = Math.floor(Math.random() * (MAX_FILE_NUM - MIN_FILE_NUM + 1)) + MIN_FILE_NUM;
- 
- <!-- ※フォルダ名変更  currentFilename = `story/${padZero(randomNum)}.png`; -->  
-            currentFilename = `ping-file/${padZero(randomNum)}.png`;
+        // DOM elements
+        const imgElement = document.getElementById('fairy-tale-img');
+        const transformWrapper = document.getElementById('transform-wrapper');
+        const viewerContainer = document.getElementById('viewer-container');
+        const nextBtn = document.getElementById('next-btn');
+        const zoomInBtn = document.getElementById('zoom-in-btn');
+        const zoomOutBtn = document.getElementById('zoom-out-btn');
+        const zoomResetBtn = document.getElementById('zoom-reset-btn');
+        const progressIndicator = document.getElementById('progress-indicator');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const errorBox = document.getElementById('error-box');
+        const errorMessage = document.getElementById('error-message');
+        const retryBtn = document.getElementById('retry-btn');
 
-            const imgElement = document.getElementById('storyImage');
-            imgElement.src = currentFilename;
-        }
-
-        // 画像の読み込みが成功したときの処理
-        function handleImageLoad() {
-            document.getElementById('loadingIndicator').classList.add('hidden');
-            document.getElementById('errorMessage').classList.add('hidden');
-        }
-
-        // 画像の読み込みに失敗したときの処理（ファイルがない場合など）
-        function handleImageError() {
-            document.getElementById('loadingIndicator').classList.add('hidden');
-            const errorMsgDiv = document.getElementById('errorMessage');
-            const errorText = document.getElementById('errorText');
-            
-            errorText.innerHTML = `「<strong>${currentFilename}</strong>」が見つかりませんでした。<br>「ping-file」フォルダ内に該当の画像ファイルが存在するか、ファイル名（02.png〜29.png）を確認してください。`;
-            errorMsgDiv.classList.remove('hidden');
-        }
-
-        // 再表示ボタンが押されたときの処理
-        function retryImage() {
-            if (!currentFilename) {
-                loadRandomStory();
-                return;
+        // Initialize non-repeating random queue (Shuffle Bag technique)
+        function initImageQueue() {
+            imageQueue = [];
+            for (let i = minIndex; i <= maxIndex; i++) {
+                imageQueue.push(i);
             }
-            document.getElementById('loadingIndicator').classList.remove('hidden');
-            document.getElementById('errorMessage').classList.add('hidden');
-            
-            // キャッシュを回避して再読み込みさせるためにクエリを付与
-            const imgElement = document.getElementById('storyImage');
-            imgElement.src = currentFilename.split('?')[0] + '?t=' + new Date().getTime();
+            // Fisher-Yates shuffle
+            for (let i = imageQueue.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [imageQueue[i], imageQueue[j]] = [imageQueue[j], imageQueue[i]];
+            }
+            currentIndexInQueue = 0;
         }
 
-        // ページ読み込み時に最初のランダム画像を表示
-        window.onload = function() {
-            loadRandomStory();
-        };
+        // Get next random image number
+        function getNextImageNumber() {
+            if (imageQueue.length === 0 || currentIndexInQueue >= imageQueue.length) {
+                initImageQueue();
+            }
+            const imgNum = imageQueue[currentIndexInQueue];
+            currentIndexInQueue++;
+            return imgNum;
+        }
+
+        // Apply zoom and pan transformations to the wrapper
+        function updateTransform() {
+            transformWrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        }
+
+        // Reset zoom and position
+        function resetZoomAndPan() {
+            scale = 1;
+            panX = 0;
+            panY = 0;
+            updateTransform();
+        }
+
+        // Load a specific image number
+        function loadFairyTale(imgNum) {
+            currentImageNumber = imgNum;
+            const fileName = `${imgNum}.png`;
+            const fullPath = `${folderPath}${fileName}`;
+
+            // Show loading spinner
+            loadingSpinner.classList.remove('hidden');
+            errorBox.classList.add('hidden');
+
+            // Update indicator text
+            const totalCount = (maxIndex - minIndex) + 1;
+            progressIndicator.textContent = `童話ファイル: ${fileName} （全 ${totalCount} 枚中）`;
+
+            // Reset zoom for new image
+            resetZoomAndPan();
+
+            // Set image source
+            imgElement.onload = function() {
+                loadingSpinner.classList.add('hidden');
+            };
+
+            imgElement.onerror = function() {
+                loadingSpinner.classList.add('hidden');
+                errorMessage.textContent = `ファイル "${fullPath}" が見つからないか、読み込めませんでした。フォルダ内にファイルが存在するか確認してください。`;
+                errorBox.classList.remove('hidden');
+            };
+
+            imgElement.src = fullPath;
+        }
+
+        // Load next random image
+        function loadNextRandom() {
+            const nextNum = getNextImageNumber();
+            loadFairyTale(nextNum);
+        }
+
+        // Event Listeners for controls
+        nextBtn.addEventListener('click', loadNextRandom);
+        retryBtn.addEventListener('click', () => loadFairyTale(currentImageNumber));
+
+        zoomInBtn.addEventListener('click', () => {
+            scale = Math.min(scale + 0.3, 4.0);
+            updateTransform();
+        });
+
+        zoomOutBtn.addEventListener('click', () => {
+            scale = Math.max(scale - 0.3, 1.0);
+            if (scale === 1) {
+                panX = 0;
+                panY = 0;
+            }
+            updateTransform();
+        });
+
+        zoomResetBtn.addEventListener('click', resetZoomAndPan);
+
+        // Mouse Dragging (Panning) for zoomed image
+        viewerContainer.addEventListener('mousedown', (e) => {
+            if (scale > 1) {
+                isDragging = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Touch support for mobile/tablets (Dragging)
+        viewerContainer.addEventListener('touchstart', (e) => {
+            if (scale > 1 && e.touches.length === 1) {
+                isDragging = true;
+                startX = e.touches[0].clientX - panX;
+                startY = e.touches[0].clientY - panY;
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging || e.touches.length !== 1) return;
+            panX = e.touches[0].clientX - startX;
+            panY = e.touches[0].clientY - startY;
+            updateTransform();
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        // Mouse Wheel Zooming
+        viewerContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomIntensity = 0.15;
+            if (e.deltaY < 0) {
+                scale = Math.min(scale + zoomIntensity, 4.0);
+            } else {
+                scale = Math.max(scale - zoomIntensity, 1.0);
+                if (scale === 1) {
+                    panX = 0;
+                    panY = 0;
+                }
+            }
+            updateTransform();
+        }, { passive: false });
+
+        // Initial launch on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            initImageQueue();
+            loadNextRandom();
+        });
     </script>
 </body>
 </html>
