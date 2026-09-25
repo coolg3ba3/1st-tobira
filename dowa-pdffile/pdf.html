@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高齢者向け 音読練習アプリ (PDF版)</title>
+    <!-- Tailwind CSS for modern responsive layout and senior-friendly styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for clear UI icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PDF.js library to render PDFs natively in browser without external plugins -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // Configure PDF.js worker source
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <style>
+        .zoom-container {
+            touch-action: none;
+            cursor: grab;
+        }
+        .zoom-container:active {
+            cursor: grabbing;
+        }
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 6px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-amber-50 text-slate-800 font-sans min-h-screen flex flex-col justify-between selection:bg-amber-200">
+
+    <header class="bg-amber-600 text-white shadow-md py-4 px-6 flex flex-wrap justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <div class="bg-white text-amber-600 p-2.5 rounded-full shadow-inner text-2xl">
+                <i class="fa-solid fa-book-open-reader"></i>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-wide">声に出して読もう・童話の時間 (PDF版)</h1>
+        </div>
+        <div class="mt-2 sm:mt-0 bg-amber-700/60 px-4 py-2 rounded-xl text-lg font-medium flex items-center space-x-2">
+            <i class="fa-solid fa-bookmark text-amber-200"></i>
+            <span id="progress-indicator">読み込み中...</span>
+        </div>
+    </header>
+
+    <main class="flex-grow flex flex-col p-4 sm:p-6 max-w-6xl mx-auto w-full">
+        <!-- Control Toolbar for Zoom and Reset -->
+        <div class="bg-white rounded-2xl shadow-sm border border-amber-200 p-3 mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center space-x-2">
+                <span class="text-base font-bold text-slate-700 ml-1">
+                    <i class="fa-solid fa-magnifying-glass text-amber-600 mr-1"></i> 表示調整:
+                </span>
+            </div>
+            <div class="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto justify-end">
+                <button id="zoom-out-btn" class="flex-1 sm:flex-none bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-3 rounded-xl border border-slate-300 shadow-sm transition active:scale-95 text-lg flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-minus"></i>
+                    <span>縮小</span>
+                </button>
+                <button id="zoom-reset-btn" class="flex-1 sm:flex-none bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-5 py-3 rounded-xl border border-amber-300 shadow-sm transition active:scale-95 text-lg flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>もどす</span>
+                </button>
+                <button id="zoom-in-btn" class="flex-1 sm:flex-none bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-3 rounded-xl border border-slate-300 shadow-sm transition active:scale-95 text-lg flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>拡大</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- PDF Viewer Box -->
+        <div id="viewer-container" class="zoom-container relative bg-white rounded-2xl shadow-md border-2 border-amber-200 overflow-hidden flex-grow flex items-center justify-center min-h-[420px] sm:min-h-[520px]">
+            <!-- Loading State / Spinner -->
+            <div id="loading-spinner" class="absolute inset-0 flex flex-col items-center justify-center bg-amber-50/80 z-20">
+                <div class="animate-spin rounded-full h-16 w-16 border-4 border-amber-600 border-t-transparent mb-3"></div>
+                <p class="text-lg font-bold text-amber-800">PDF童話を読み込んでいます...</p>
+            </div>
+
+            <!-- Error State Box -->
+            <div id="error-box" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-white p-6 text-center z-20">
+                <div class="text-red-500 text-5xl mb-3">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2">PDFを読み込めませんでした</h3>
+                <p class="text-slate-600 max-w-md mb-4 text-base" id="error-message">
+                    指定されたフォルダ（./pdf-file/）にPDFファイルが見つかりません。
+                </p>
+                <button id="retry-btn" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-6 py-3 rounded-xl shadow transition text-lg">
+                    もう一度試す
+                </button>
+            </div>
+
+            <!-- Zoomable Canvas Wrapper -->
+            <div id="transform-wrapper" class="transition-transform duration-75 origin-center w-full h-full flex items-center justify-center">
+                <canvas id="pdf-canvas" class="shadow-sm rounded max-w-full max-h-[75vh]"></canvas>
+            </div>
+
+            <!-- Guidance Overlay hint for seniors -->
+            <div class="absolute bottom-3 left-3 bg-slate-900/70 text-white text-xs sm:text-sm px-3 py-1.5 rounded-lg pointer-events-none z-10 backdrop-blur-sm">
+                <i class="fa-solid fa-hand text-amber-300 mr-1"></i> 画面を動かしたり、上のボタンで大きくして読めます
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t border-amber-200 py-4 px-6 shadow-lg">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="text-sm sm:text-base text-slate-600 text-center sm:text-left">
+                <i class="fa-solid fa-circle-info text-amber-600 mr-1"></i> 文字が小さいときは「＋拡大」ボタンを押してください。
+            </div>
+            <div>
+                <button id="next-btn" class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 active:scale-95 text-white text-xl font-bold px-8 py-4 rounded-2xl shadow-lg border-2 border-amber-500 flex items-center justify-center space-x-3 transition transform">
+                    <span>次の童話へ進む</span>
+                    <i class="fa-solid fa-arrow-right text-amber-200"></i>
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Configuration
+        const minIndex = 10;
+        const maxIndex = 23;
+        const folderPath = './pdf-file/';
+
+        // State management
+        let pdfQueue = [];
+        let currentIndexInQueue = -1;
+        let currentPdfNumber = null;
+        let pdfDoc = null;
+        let pageNum = 1;
+
+        // Zoom & Pan state variables
+        let scale = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+
+        // DOM elements
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+        const transformWrapper = document.getElementById('transform-wrapper');
+        const viewerContainer = document.getElementById('viewer-container');
+        const nextBtn = document.getElementById('next-btn');
+        const zoomInBtn = document.getElementById('zoom-in-btn');
+        const zoomOutBtn = document.getElementById('zoom-out-btn');
+        const zoomResetBtn = document.getElementById('zoom-reset-btn');
+        const progressIndicator = document.getElementById('progress-indicator');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const errorBox = document.getElementById('error-box');
+        const errorMessage = document.getElementById('error-message');
+        const retryBtn = document.getElementById('retry-btn');
+
+        // Initialize non-repeating random queue
+        function initPdfQueue() {
+            pdfQueue = [];
+            for (let i = minIndex; i <= maxIndex; i++) {
+                pdfQueue.push(i);
+            }
+            // Fisher-Yates shuffle
+            for (let i = pdfQueue.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pdfQueue[i], pdfQueue[j]] = [pdfQueue[j], pdfQueue[i]];
+            }
+            currentIndexInQueue = 0;
+        }
+
+        function getNextPdfNumber() {
+            if (pdfQueue.length === 0 || currentIndexInQueue >= pdfQueue.length) {
+                initPdfQueue();
+            }
+            const pdfNum = pdfQueue[currentIndexInQueue];
+            currentIndexInQueue++;
+            return pdfNum;
+        }
+
+        // Apply zoom and pan transformations
+        function updateTransform() {
+            transformWrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        }
+
+        function resetZoomAndPan() {
+            scale = 1;
+            panX = 0;
+            panY = 0;
+            updateTransform();
+        }
+
+        // Render PDF page to canvas
+        function renderPage(num) {
+            pdfDoc.getPage(num).then(function(page) {
+                // Base viewport scale for good rendering resolution
+                const viewport = page.getViewport({ scale: 1.5 });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+
+                const renderTask = page.render(renderContext);
+                renderTask.promise.then(function() {
+                    loadingSpinner.classList.add('hidden');
+                });
+            }).catch(function(err) {
+                loadingSpinner.classList.add('hidden');
+                errorMessage.textContent = `PDFページの描画に失敗しました: ${err.message}`;
+                errorBox.classList.remove('hidden');
+            });
+        }
+
+        // Load specific PDF file number
+        function loadFairyTalePdf(pdfNum) {
+            currentPdfNumber = pdfNum;
+            const fileName = `${pdfNum}.pdf`;
+            const fullPath = `${folderPath}${fileName}`;
+
+            loadingSpinner.classList.remove('hidden');
+            errorBox.classList.add('hidden');
+
+            const totalCount = (maxIndex - minIndex) + 1;
+            progressIndicator.textContent = `PDFファイル: ${fileName} （全 ${totalCount} 冊中）`;
+
+            resetZoomAndPan();
+
+            pdfjsLib.getDocument(fullPath).promise.then(function(pdfDoc_) {
+                pdfDoc = pdfDoc_;
+                pageNum = 1; // Always show the first page of each fairy tale PDF
+                renderPage(pageNum);
+            }).catch(function(error) {
+                loadingSpinner.classList.add('hidden');
+                errorMessage.textContent = `ファイル "${fullPath}" が見つからないか、読み込めませんでした。フォルダ内にPDFファイルが存在するか確認してください。`;
+                errorBox.classList.remove('hidden');
+            });
+        }
+
+        function loadNextRandom() {
+            const nextNum = getNextPdfNumber();
+            loadFairyTalePdf(nextNum);
+        }
+
+        // Event Listeners
+        nextBtn.addEventListener('click', loadNextRandom);
+        retryBtn.addEventListener('click', () => loadFairyTalePdf(currentPdfNumber));
+
+        zoomInBtn.addEventListener('click', () => {
+            scale = Math.min(scale + 0.3, 4.0);
+            updateTransform();
+        });
+
+        zoomOutBtn.addEventListener('click', () => {
+            scale = Math.max(scale - 0.3, 1.0);
+            if (scale === 1) {
+                panX = 0;
+                panY = 0;
+            }
+            updateTransform();
+        });
+
+        zoomResetBtn.addEventListener('click', resetZoomAndPan);
+
+        // Mouse Dragging (Panning)
+        viewerContainer.addEventListener('mousedown', (e) => {
+            if (scale > 1) {
+                isDragging = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Touch Dragging for Mobile/Tablets
+        viewerContainer.addEventListener('touchstart', (e) => {
+            if (scale > 1 && e.touches.length === 1) {
+                isDragging = true;
+                startX = e.touches[0].clientX - panX;
+                startY = e.touches[0].clientY - startY;
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging || e.touches.length !== 1) return;
+            panX = e.touches[0].clientX - startX;
+            panY = e.touches[0].clientY - startY;
+            updateTransform();
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        // Mouse Wheel Zooming
+        viewerContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomIntensity = 0.15;
+            if (e.deltaY < 0) {
+                scale = Math.min(scale + zoomIntensity, 4.0);
+            } else {
+                scale = Math.max(scale - zoomIntensity, 1.0);
+                if (scale === 1) {
+                    panX = 0;
+                    panY = 0;
+                }
+            }
+            updateTransform();
+        }, { passive: false });
+
+        // Initial launch
+        window.addEventListener('DOMContentLoaded', () => {
+            initPdfQueue();
+            loadNextRandom();
+        });
+    </script>
+</body>
+</html>
