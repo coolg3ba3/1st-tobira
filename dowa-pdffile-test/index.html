@@ -1,0 +1,170 @@
+<!-- ※参考サイト「昔話～の王国」
+  https://www.douwa-douyou.jp/contents/html/douwastory/douwastory1_25.shtml
+ -->  
+
+<!-- ヘッダーエリア -->
+<header class="bg-amber-600 text-white px-6 py-4 shadow-md flex flex-wrap justify-between items-center z-10">
+    <h1 class="text-3xl font-bold tracking-wider flex items-center gap-2">
+        📖 音読のじかん
+    </h1>
+    <div id="file-title" class="text-xl bg-amber-700 px-4 py-2 rounded-lg font-medium">
+        おはなしを読み込み中...
+    </div>
+</header>
+
+<!-- メインビュー（PDF表示エリア） -->
+<main id="pdf-container" class="flex-1 overflow-auto bg-gray-200 relative flex justify-center items-start p-4">
+    <!-- 読み込み中・エラーメッセージ用 -->
+    <div id="message-box" class="absolute inset-0 flex flex-col items-center justify-center bg-white bg-opacity-90 z-20">
+        <div class="text-2xl font-bold text-gray-700 mb-4 animate-pulse" id="loading-text">
+            おはなしをひらいています...
+        </div>
+        <div id="error-action" class="hidden flex flex-col items-center">
+            <p class="text-red-600 text-xl mb-4 font-bold" id="error-message">PDFの読み込みに失敗しました</p>
+            <button onclick="loadRandomPDF()" class="bg-blue-600 hover:bg-blue-700 text-white text-2xl font-bold px-8 py-4 rounded-xl shadow-lg transition transform active:scale-95">
+                🔄 もう一度表示する
+            </button>
+        </div>
+    </div>
+
+    <!-- PDFのページが描画されるキャンバス -->
+    <div id="canvas-wrapper" class="bg-white shadow-2xl rounded-lg overflow-hidden my-auto">
+        <canvas id="pdf-canvas" class="block mx-auto"></canvas>
+    </div>
+</main>
+
+<!-- 操作ボタンエリア（高齢者向けに非常に大きく配置） -->
+<footer class="bg-white border-t-4 border-amber-500 p-4 shadow-lg grid grid-cols-2 md:grid-cols-4 gap-4 z-10">
+    <!-- 拡大ボタン -->
+    <button onclick="zoomIn()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-2xl font-bold py-5 px-4 rounded-2xl shadow-md flex items-center justify-center gap-2 transition active:scale-95">
+        🔍 ＋ 大きく
+    </button>
+
+    <!-- 縮小ボタン -->
+    <button onclick="zoomOut()" class="bg-teal-600 hover:bg-teal-700 text-white text-2xl font-bold py-5 px-4 rounded-2xl shadow-md flex items-center justify-center gap-2 transition active:scale-95">
+        🔍 － 小さく
+    </button>
+
+    <!-- 再表示ボタン -->
+    <button onclick="reloadCurrentPDF()" class="bg-amber-600 hover:bg-amber-700 text-white text-2xl font-bold py-5 px-4 rounded-2xl shadow-md flex items-center justify-center gap-2 transition active:scale-95">
+        🔄 再表示
+    </button>
+
+    <!-- 次の練習ボタン -->
+    <button onclick="loadRandomPDF()" class="bg-rose-600 hover:bg-rose-700 text-white text-2xl font-bold py-5 px-4 rounded-2xl shadow-md flex items-center justify-center gap-2 transition active:scale-95">
+        ✨ 次の練習へ
+    </button>
+</footer>
+
+<script>
+    // 設定: 11.pdf から 23.pdf まで
+    const minFileNum = 11;
+    const maxFileNum = 23;
+
+    let currentFileNum = null;
+    let currentScale = 1.3; // 初期表示を少し大きめに設定
+    let pdfDoc = null;
+    let loadingTask = null;
+
+    // ページ読み込み時に自動でランダムなPDFを開く
+    window.addEventListener('DOMContentLoaded', () => {
+        loadRandomPDF();
+    });
+
+    // 2桁のゼロ埋め文字列を作成 (例: 2 -> "02")
+    function padZero(num) {
+        return String(num).padStart(2, '0');
+    }
+
+    // ランダムなPDFファイルを読み込む
+    function loadRandomPDF() {
+        // 11〜23の中からランダムに選択
+        const randomNum = Math.floor(Math.random() * (maxFileNum - minFileNum + 1)) + minFileNum;
+        currentFileNum = randomNum;
+        fetchAndRenderPDF(currentFileNum);
+    }
+
+    // 現在のPDFを再読み込みする
+    function reloadCurrentPDF() {
+        if (currentFileNum !== null) {
+            fetchAndRenderPDF(currentFileNum);
+        } else {
+            loadRandomPDF();
+        }
+    }
+
+    // 指定された番号のPDFを読み込んで描画する
+    function fetchAndRenderPDF(fileNum) {
+<!-- フォルダ名変更  const fileName = `~/story/${padZero(fileNum)}.pdf`;     -->
+        const fileName = `pdf-file/${padZero(fileNum)}.pdf`;
+        
+        // UIをロード中状態にする
+        document.getElementById('message-box').style.display = 'flex';
+        document.getElementById('loading-text').style.display = 'block';
+        document.getElementById('loading-text').textContent = `おはなし（${padZero(fileNum)}.pdf）をひらいています...`;
+        document.getElementById('error-action').classList.add('hidden');
+        document.getElementById('file-title').textContent = `おはなし: 第 ${fileNum} 話`;
+
+        if (loadingTask) {
+            loadingTask.destroy();
+        }
+
+        loadingTask = pdfjsLib.getDocument(fileName);
+        loadingTask.promise.then(async (pdfDoc_) => {
+            pdfDoc = pdfDoc_;
+            // メッセージボックスを非表示にする
+            document.getElementById('message-box').style.display = 'none';
+            renderPage(1);
+        }).catch(error => {
+            console.error('PDF Load Error:', error);
+            document.getElementById('loading-text').style.display = 'none';
+            document.getElementById('error-action').classList.remove('hidden');
+            document.getElementById('error-message').textContent = `ファイル (${fileName}) がみつかりません`;
+        });
+    }
+
+    // PDFの指定ページをレンダリング
+    function renderPage(pageNum) {
+        if (!pdfDoc) return;
+        pdfDoc.getPage(pageNum).then(page => {
+            const canvas = document.getElementById('pdf-canvas');
+            const context = canvas.getContext('2d');
+            
+            // コンテナの幅に合わせたスケール調整
+            const container = document.getElementById('pdf-container');
+            const viewportUnscaled = page.getViewport({ scale: 1.0 });
+            
+            // 画面幅に自動フィットしつつ、currentScaleで拡大縮小
+            const hScale = (container.clientWidth - 40) / viewportUnscaled.width;
+            const vScale = (container.clientHeight - 40) / viewportUnscaled.height;
+            let baseScale = Math.min(hScale, vScale);
+            if (baseScale < 0.6) baseScale = 0.6; // 最低サイズ保証
+
+            const finalScale = baseScale * currentScale;
+            const viewport = page.getViewport({ scale: finalScale });
+
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+            page.render(renderContext);
+        });
+    }
+
+    // 拡大
+    function zoomIn() {
+        currentScale += 0.25;
+        if (currentScale > 3.0) currentScale = 3.0; // 最大制限
+        renderPage(1);
+    }
+
+    // 縮小
+    function zoomOut() {
+        currentScale -= 0.25;
+        if (currentScale < 1.0) currentScale = 1.0; // 最小制限（見やすさを考慮）
+        renderPage(1);
+    }
+</script>
