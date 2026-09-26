@@ -26,7 +26,7 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 10px;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
@@ -36,20 +36,18 @@
             font-size: 1.2rem;
             font-weight: bold;
             color: #2c3e50;
-            flex-grow: 1;
         }
 
         .button-group {
             display: flex;
-            gap: 8px;
+            gap: 10px;
             flex-wrap: wrap;
-            align-items: center;
         }
 
         /* 押しやすい大きなボタン */
         button {
-            font-size: 1.05rem;
-            padding: 10px 16px;
+            font-size: 1.1rem;
+            padding: 10px 20px;
             cursor: pointer;
             border: none;
             border-radius: 8px;
@@ -61,18 +59,10 @@
         }
 
         button:active {
+            background-color: #2980b9;
             transform: translateY(1px);
         }
 
-        /* 一旦停止ボタン（オレンジ色） */
-        .btn-pause {
-            background-color: #e67e22;
-        }
-        .btn-pause:active {
-            background-color: #d35400;
-        }
-
-        /* 次の童話へボタン（緑色） */
         .btn-next {
             background-color: #27ae60;
         }
@@ -80,24 +70,7 @@
             background-color: #219653;
         }
 
-        /* 音量調整エリア */
-        .volume-control {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 0.95rem;
-            font-weight: bold;
-            background: #ecf0f1;
-            padding: 6px 10px;
-            border-radius: 8px;
-        }
-
-        .volume-control input[type="range"] {
-            width: 80px;
-            cursor: pointer;
-        }
-
-        /* コンテンツ表示エリア */
+        /* コンテンツ表示エリア（iframe） */
         .content-container {
             flex: 1;
             background: #ffffff;
@@ -108,65 +81,52 @@
             flex-direction: column;
         }
 
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            /* 拡大縮小用の基準 */
+            transform-origin: top left;
+        }
+        
         .iframe-wrapper {
             width: 100%;
             height: 100%;
             overflow: auto;
             position: relative;
         }
-
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            transform-origin: top left;
-        }
     </style>
 </head>
 <body>
 
     <header>
-        <div class="title-area" id="file-title">読み込み中...</div>
+        <div class="title-area" id="file-title">読み込み中...</div> 
         <div class="button-group">
-            <!-- 音量調整 -->
-            <div class="volume-control">
-                <span>音量:</span>
-                <input type="range" id="volume-slider" min="0" max="100" value="100" oninput="changeVolume(this.value)">
-            </div>
             <!-- 文字・画面拡大縮小ボタン -->
             <button onclick="zoomOut()">縮小 (-)</button>
             <button onclick="zoomIn()">拡大 (+)</button>
-            <!-- 次の童話へ進むボタン（自動で停止＆切り替え） -->
+            <!-- 次の童話へ進むボタン -->
             <button class="btn-next" onclick="loadRandomStory()">次の童話へ ＞</button>
         </div>
-         <p style="font-size: 18px; color: #ff0000;">
-            ※注意※ 「次の童話へ」ボタンを押す前に、再生中の動画を「ストップ」してください
+          <p style="font-size: 18px; color: #ff0000;">
+            ※ 次の動画を再生する時は、再生中の動画を「ストップ」してから「次の童話へ」ボタンを押す ※
           </p>
--->
     </header>
 
     <div class="content-container">
         <div class="iframe-wrapper" id="wrapper">
-            <!-- iframeをJavaScriptで動的に生成・管理します -->
-            <div id="frame-container" style="width:100%; height:100%;"></div>
+            <iframe id="story-frame" src=""></iframe>
         </div>
     </div>
 
     <script>
         let currentZoom = 1.0; // 初期ズーム倍率
-        let currentUrl = "";   // 現在のURLを保持
 
-        // iframeを再生成して完全に音声をストップさせる（一旦停止機能）
-        function pauseStory() {
-            const container = document.getElementById('frame-container');
-            container.innerHTML = ""; // 中身を空にしてiframeを消去（音声も強制停止）
-            document.getElementById('file-title').innerText = "（一時停止中）再開するには「次の童話へ」を押してください";
-        }
-
-        // 01〜12の中からランダムにファイルを選んで読み込む関数（自動停止＋切り替え）
+        // 01〜12の中からランダムにファイルを選んで読み込む関数
         function loadRandomStory() {
             // 1から12までのランダムな整数を生成
             const randomNum = Math.floor(Math.random() * 12) + 1;
+            // 2桁のゼロ埋めフォーマット (01, 02 ... 12)
             const fileNumber = String(randomNum).padStart(2, '0');
             const filePath = `url-file/${fileNumber}.txt`;
 
@@ -181,10 +141,10 @@
                     return response.text();
                 })
                 .then(url => {
+                    // 改行や前後の空白を削除してURLを取得
                     const cleanUrl = url.trim();
                     if(cleanUrl) {
-                        currentUrl = cleanUrl;
-                        renderIframe(currentUrl);
+                        document.getElementById('story-frame').src = cleanUrl;
                     } else {
                         alert(`${fileNumber}.txt の中にURLが記載されていません。`);
                     }
@@ -193,13 +153,6 @@
                     console.error(error);
                     alert(`${filePath} の読み込みに失敗しました。\nファイルが存在するか確認してください。`);
                 });
-        }
-
-        // iframeを新しく組み立てて配置する関数
-        function renderIframe(url) {
-            const container = document.getElementById('frame-container');
-            container.innerHTML = `<iframe id="story-frame" src="${url}"></iframe>`;
-            applyZoom(); // 現在の拡大率を適用
         }
 
         // 拡大ボタン
@@ -219,28 +172,9 @@
         // ズームを適用する
         function applyZoom() {
             const frame = document.getElementById('story-frame');
-            if (frame) {
-                frame.style.width = (100 / currentZoom) + '%';
-                frame.style.height = (100 / currentZoom) + '%';
-                frame.style.transform = `scale(${currentZoom})`;
-            }
-        }
-
-        // 音量調整（ブラウザ・iframeの仕様上、対応している外部プレイヤーやHTML5オーディオに作用します）
-        function changeVolume(val) {
-            const frame = document.getElementById('story-frame');
-            if (frame && frame.contentWindow) {
-                try {
-                    // 同一ドメイン内のページであれば音量を直接変更を試みる
-                    const audios = frame.contentWindow.document.querySelectorAll('audio, video');
-                    audios.forEach(audio => {
-                        audio.volume = val / 100;
-                    });
-                } catch(e) {
-                    // セキュリティ上の理由（CORS）で外部サイトの内部要素にアクセスできない場合はコンソールに記録
-                    console.log("外部サイトの音量は直接変更できません（サイト側の音量つまみをご利用ください）");
-                }
-            }
+            frame.style.width = (100 / currentZoom) + '%';
+            frame.style.height = (100 / currentZoom) + '%';
+            frame.style.transform = `scale(${currentZoom})`;
         }
 
         // ページを開いたときに最初の1冊をランダム表示
