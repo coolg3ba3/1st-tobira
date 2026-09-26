@@ -165,15 +165,15 @@
             return null;
         }
 
-        // Fetch and load random text file from 'y-file/XX.txt' (01 to 49)
+        // Fetch and load random text file from 'y-file/XX.txt' (01 to 26)
         async function loadRandomFile() {
             // Detect if running on file:// protocol to show notice banner
             if (window.location.protocol === 'file:') {
                 document.getElementById('notice-banner').classList.remove('hidden');
             }
 
-            // Pick a random number between 1 and 49
-            const randomNum = Math.floor(Math.random() * 49) + 1;
+            // Pick a random number between 1 and 26
+            const randomNum = Math.floor(Math.random() * 26) + 1;
             const fileNumberStr = String(randomNum).padStart(2, '0');
             const filePath = `y-file/${fileNumberStr}.txt`;
 
