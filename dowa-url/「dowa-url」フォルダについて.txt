@@ -1,3 +1,0 @@
-「dowa-youtube」フォルダを参考」
--->「dowa-youtube」フォルダはyoutubeのurl「dowa-url」は各ホームページのurl記述
-（今回はサイトurl記述してあるが、自動的にyoutubeのurlへリンクしている）
