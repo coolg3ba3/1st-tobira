@@ -1,0 +1,12 @@
+※「github pages」を利用してwebサイト公開の手順※
+「https://github.com/(ユーザー名)/(リポジトリ名/)」でgitihubアクセス
+   -->「index.html」ファイルをアップロード
+   （「/main(/root)」ではなく「/docs」をルートにする場合は、ここで「docs」フォルダをアップロードしておき、そこへindex.htmlを保存）
+   -->https://(ユーザー名.github.io/(リポジトリ名) or /(リポジトリ名)/docs)でアクセスできるように、続いて以降の設定をする
+       ※ ここのurlが自分のgithub pagesを利用したwebサイトとなる ※
+   -->(上述のgithubアクセスページ表示画面中の)「setting(歯車マーク)」をクリック
+   -->「Build and deployment」-->「source」(「Dploy from a branch」であるのを確認)
+   -->「Branch」のドロップダウンから「main」選択
+   -->(フォルダ選択)「/root」または「/docs」(/docs以下のみを公開する場合)を選択
+   -->「save」クリック
+       
