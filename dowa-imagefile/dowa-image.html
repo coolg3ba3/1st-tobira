@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高齢者のための音読練習</title>
+    <style>
+        /* 全体のレイアウト設定：高齢者が見やすいようにシンプルで大きなUI */
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f7f9fc;
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        /* 操作ボタンをまとめたエリア */
+        .control-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        /* 高齢者が押しやすい大きなボタン */
+        button {
+            font-size: 22px;
+            font-weight: bold;
+            padding: 15px 30px;
+            cursor: pointer;
+            border: none;
+            border-radius: 12px;
+            background-color: #2b6cb0;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.2s, transform 0.1s;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        button:hover {
+            background-color: #2c5282;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        /* 次の童話ボタンは目立つように色を変えることも可能 */
+        #next-btn {
+            background-color: #2f855a;
+        }
+        #next-btn:hover {
+            background-color: #276749;
+        }
+
+        /* 画像を表示するコンテナ（スクロール可能にして拡大時に見やすくする） */
+        .image-container {
+            width: 100%;
+            max-width: 900px;
+            height: 70vh;
+            background-color: white;
+            border: 3px solid #cbd5e0;
+            border-radius: 12px;
+            overflow: auto; /* 画像が大きくなったときにスクロールできるようにする */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        /* 画像自体のスタイル */
+        #story-image {
+            max-width: 100%;
+            height: auto;
+            transition: transform 0.2s ease;
+            transform-origin: center center;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>音読練習（童話）</h1>
+
+    <!-- 操作パネル -->
+    <div class="control-panel">
+        <button id="zoom-in-btn" onclick="zoomIn()">🔍 拡大 (+)</button>
+        <button id="zoom-out-btn" onclick="zoomOut()">🔍 縮小 (-)</button>
+        <button id="next-btn" onclick="loadRandomImage()">📖 次の童謡へ</button>
+    </div>
+
+    <!-- 画像表示エリア -->
+    <div class="image-container" id="container">
+        <img id="story-image" src="" alt="童話の画像">
+    </div>
+
+    <script>
+        // 対象の画像ファイル番号（10から23まで）
+        const minNum = 10;
+        const maxNum = 23;
+        
+        let currentScale = 1.0; // 初期の拡大率
+
+        // ランダムに画像を選択して表示する関数
+        function loadRandomImage() {
+            // 10から23までのランダムな整数を生成
+            const randomNum = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+            
+            // フォルダパスとファイル名を結合
+            const imagePath = `ping-file/${randomNum}.png`;
+            
+            const imgElement = document.getElementById('story-image');
+            imgElement.src = imagePath;
+
+            // 画像を切り替えたときに拡大率をリセットする場合
+            // currentScale = 1.0;
+            // imgElement.style.transform = `scale(${currentScale})`;
+        }
+
+        // 拡大ボタンの処理
+        function zoomIn() {
+            if (currentScale < 2.5) { // 最大2.5倍まで
+                currentScale += 0.25;
+                updateImageScale();
+            }
+        }
+
+        // 縮小ボタンの処理
+        function zoomOut() {
+            if (currentScale > 0.75) { // 最小0.75倍まで
+                currentScale -= 0.25;
+                updateImageScale();
+            }
+        }
+
+        // 拡大率を画像に適用する関数
+        function updateImageScale() {
+            const imgElement = document.getElementById('story-image');
+            imgElement.style.transform = `scale(${currentScale})`;
+        }
+
+        // ページを読み込んだときに最初の1枚をランダム表示
+        window.onload = function() {
+            loadRandomImage();
+        };
+    </script>
+
+</body>
+</html>
