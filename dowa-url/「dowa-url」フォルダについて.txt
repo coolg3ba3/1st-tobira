@@ -1,0 +1,7 @@
+「dowa-youtube」フォルダを参考」
+-->「dowa-youtube」フォルダはyoutubeのurl「dowa-url」は各ホームページのurl記述
+（今回はサイトurl記述してあるが、自動的にyoutubeのurlへリンクしている）
+
+※実行htmlファイルは「dowa-url.html」※
+（再生ストップを使いたい場合は「dowa-url-stopbutton.html」使うが、一旦停止した後に「次の童話へ」押すと、次の童話へ移動する）
+
